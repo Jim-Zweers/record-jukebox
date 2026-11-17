@@ -1,5 +1,5 @@
 // Bump VERSION with every new upload so phones pick up the new version.
-const VERSION = 'pjb-1';
+const VERSION = 'pjb-2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const IMG = 'pjb-img';
 const FONTS = 'pjb-fonts';

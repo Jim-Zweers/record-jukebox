@@ -161,7 +161,7 @@ let acct=ls.get('acct',null),records=[],hist={},pick=null,reel=[],synced=null,or
 let filt={q:'',genre:'',fmt:''},spinning=false,syncing=false,enriching=false;
 const uk=k=>k+':'+(acct?acct.user.toLowerCase():'');
 const yr=r=>origs[r.mid]||r.year||'';
-const metaOf=r=>[yr(r),r.format,r.genre].filter(Boolean).map(esc).join(' · ')+(origs[r.mid]&&r.year&&r.year!==origs[r.mid]?` · persing ${esc(r.year)}`:'');
+const metaOf=r=>[yr(r),r.format,r.genres[0]].filter(Boolean).map(esc).join(' · ')+(origs[r.mid]&&r.year&&r.year!==origs[r.mid]?` · persing ${esc(r.year)}`:'');
 const daysAgo=d=>d?Math.max(0,Math.round((Date.now()-new Date(d))/864e5)):null;
 const saveSt=()=>ls.set(uk('st'),{pick,reel});
 
@@ -190,7 +190,7 @@ function fmtOf(fs){
 function mapRel(x){
   const b=x.basic_information||{},as=b.artists||[];
   const artist=as.map((a,i)=>(a.anv||a.name||'').replace(/\s\(\d+\)$/,'')+(i<as.length-1?(a.join&&a.join!==','?' '+a.join+' ':', '):'')).join('').trim()||'Onbekend';
-  return {id:String(x.instance_id||x.id),rid:b.id||x.id,mid:b.master_id||0,artist,title:b.title||'',year:b.year||'',format:fmtOf(b.formats),genre:(b.genres||[])[0]||'',style:(b.styles||[])[0]||'',thumb:img(b.thumb),cover:img(b.cover_image)};
+  return {id:String(x.instance_id||x.id),rid:b.id||x.id,mid:b.master_id||0,artist,title:b.title||'',year:b.year||'',format:fmtOf(b.formats),genres:b.genres||[],styles:b.styles||[],thumb:img(b.thumb),cover:img(b.cover_image)};
 }
 function errMsg(e){
   const c=e&&e.code;
@@ -245,7 +245,7 @@ function status(msg,err){
 /* ---------- rendering ---------- */
 const sorted=()=>[...records].sort((a,b)=>a.artist.localeCompare(b.artist,'nl')||String(yr(a)).localeCompare(String(yr(b))));
 const codeOf=()=>{const m={};sorted().forEach((r,i)=>m[r.id]=letters(Math.floor(i/9))+(i%9+1));return m};
-const shown=()=>{const q=filt.q.toLowerCase();return sorted().filter(r=>(!filt.genre||r.genre===filt.genre)&&(!filt.fmt||r.format===filt.fmt)&&(!q||(r.artist+' '+r.title).toLowerCase().includes(q)))};
+const shown=()=>{const q=filt.q.toLowerCase();return sorted().filter(r=>(!filt.genre||r.genres.includes(filt.genre))&&(!filt.fmt||r.format===filt.fmt)&&(!q||(r.artist+' '+r.title).toLowerCase().includes(q)))};
 
 function sleeve(r){
   const h=hue(r.artist+r.title),ini=r.artist.split(/\s+/).filter(w=>/^\w/.test(w)).slice(0,2).map(w=>w[0]).join('');
@@ -293,7 +293,7 @@ function renderReel(seq){
 }
 function renderList(){
   const codes=codeOf(),list=shown();
-  const genres=[...new Set(records.map(r=>r.genre).filter(Boolean))].sort();
+  const genres=[...new Set(records.flatMap(r=>r.genres))].sort();
   $('genre').innerHTML=`<option value="">Alle genres</option>`+genres.map(g=>`<option${g===filt.genre?' selected':''}>${esc(g)}</option>`).join('');
   const fmts=[...new Set(records.map(r=>r.format).filter(Boolean))].sort();
   $('fmts').innerHTML=['',...fmts].map(f=>`<button class="chip${f===filt.fmt?' on':''}" data-f="${esc(f)}">${f?esc(f):'Alle formaten'}</button>`).join('');
@@ -303,7 +303,7 @@ function renderList(){
     <span class="tx"><span class="t">${esc(r.title)}</span><span class="a">${esc(r.artist)}</span><span class="m">${metaOf(r)}${h&&h.last?` · ${daysAgo(h.last)===0?'vandaag':daysAgo(h.last)+' d geleden'}`:''}</span></span></button>`}).join('')
     :`<div class="empty">${!acct?'Koppel eerst je Discogs-account.<br><button class="btn mint" data-setup>Discogs koppelen</button>':syncing?'Collectie ophalen…':n?'Geen platen gevonden met deze filters.':'Nog geen platen gevonden in je Discogs-collectie.'}</div>`;
   const cur=records.find(r=>r.id===pick);
-  $('pool').textContent=list.length?`Kiest uit ${list.length} ${list.length===1?'plaat':'platen'}${$('vibe').checked&&cur?` · in de sfeer van ${cur.style||cur.genre||cur.artist}${yr(cur)?` (${yr(cur)})`:''}`:''}`:'';
+  $('pool').textContent=list.length?`Kiest uit ${list.length} ${list.length===1?'plaat':'platen'}${$('vibe').checked&&cur?` · in de sfeer van ${cur.styles[0]||cur.genres[0]||cur.artist}${yr(cur)?` (${yr(cur)})`:''}`:''}`:'';
   $('spin').disabled=!list.length||spinning;
   $('sync').hidden=!acct;
   $('sub').textContent=acct?`De collectie van ${acct.user} op Discogs. Druk op de knop en de jukebox kiest wat er op de draaitafel gaat.`:'Druk op de knop en de jukebox kiest wat er op de draaitafel gaat.';
@@ -313,9 +313,10 @@ function render(){renderList();renderNow()}
 /* ---------- picking ---------- */
 const REL={rock:['pop','blues','punk','folk, world, & country','electronic'],pop:['rock','funk / soul','electronic','hip hop','latin'],jazz:['funk / soul','blues','latin','reggae'],'funk / soul':['jazz','pop','hip hop','electronic','blues','reggae'],electronic:['pop','hip hop','funk / soul','rock'],blues:['rock','jazz','funk / soul','folk, world, & country'],'folk, world, & country':['rock','blues','pop'],'hip hop':['funk / soul','electronic','pop','reggae'],reggae:['funk / soul','latin','hip hop'],latin:['jazz','funk / soul','pop'],classical:['stage & screen'],'stage & screen':['pop','classical']};
 const related=(a,b)=>{a=(a||'').toLowerCase();b=(b||'').toLowerCase();return !!a&&!!b&&((REL[a]||[]).includes(b)||(REL[b]||[]).includes(a))};
+const shares=(a,b)=>a.some(x=>b.includes(x));
 function vibeOf(r,prev){
-  let m=r.genre&&r.genre===prev.genre?6:related(r.genre,prev.genre)?2.5:1;
-  if(r.style&&r.style===prev.style)m*=2;
+  let m=shares(r.genres,prev.genres)?6:r.genres.some(g=>prev.genres.some(p=>related(g,p)))?2.5:1;
+  if(shares(r.styles,prev.styles))m*=2;
   if(yr(r)&&yr(prev)){const d=Math.abs(yr(r)-yr(prev));m*=d<=5?2:d<=12?1.4:1}
   if(r.artist===prev.artist)m*=1.5;
   return m;
@@ -369,11 +370,14 @@ function openDlg(h){$('dlg').innerHTML=h;$('ov').classList.add('open');const f=$
 function closeDlg(){$('ov').classList.remove('open')}
 function toast(m){$('toast').textContent=m;$('toast').classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.remove('show'),4000)}
 function load(force){
-  records=acct?ls.get(uk('col'),[]):[];hist=acct?ls.get(uk('hist'),{}):{};
+  const cached=acct?ls.get(uk('col'),[]):[],old=cached.some(r=>!r.genres);
+  // Collections saved before genres and styles were lists: convert now, re-sync below for the full lists.
+  records=cached.map(r=>r.genres?r:{...r,genres:r.genre?[r.genre]:[],styles:r.style?[r.style]:[]});
+  hist=acct?ls.get(uk('hist'),{}):{};
   const st=acct?ls.get(uk('st'),{}):{};pick=st.pick||null;reel=st.reel||[];
   synced=acct?ls.get(uk('synced'),null):null;
   status();render();renderReel();
-  if(acct&&(force||!synced||Date.now()-synced>10*60e3))sync();else if(acct)enrich();
+  if(acct&&(force||old||!synced||Date.now()-synced>10*60e3))sync();else if(acct)enrich();
 }
 
 try{$('vibe').checked=!!ls.get('vibe',false)}catch(e){}
