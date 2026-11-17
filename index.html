@@ -171,7 +171,7 @@ async function api(path,tries=0){
   const url=API+path+(acct.token?sep+'token='+encodeURIComponent(acct.token):'');
   let res;
   try{res=await fetch(url)}catch(e){
-    // Discogs stuurt bij te veel verzoeken (429) geen CORS-header mee; dat ziet eruit als een netwerkfout.
+    // On too many requests (429) Discogs sends no CORS header, so it looks like a network error.
     if(navigator.onLine!==false&&tries<3){await sleep(5000*(tries+1));return api(path,tries+1)}
     throw {code:'net'};
   }
@@ -222,7 +222,7 @@ async function sync(){
   }catch(e){if(acct===me){status(errMsg(e),true);render()}}
   finally{syncing=false;$('sync').disabled=false}
 }
-// Haalt per album het jaar van de eerste uitgave op (één keer, daarna onthouden).
+// Fetches the year of the first release per album (once, then remembered).
 async function enrich(){
   if(enriching||!acct)return;enriching=true;const me=acct;
   const todo=[...new Set(records.filter(r=>r.mid&&!(r.mid in origs)).map(r=>r.mid))];
@@ -242,7 +242,7 @@ function status(msg,err){
   $('status').textContent=synced?'Bijgewerkt '+new Date(synced).toLocaleString('nl-NL',{weekday:'short',hour:'2-digit',minute:'2-digit'}):'';
 }
 
-/* ---------- weergave ---------- */
+/* ---------- rendering ---------- */
 const sorted=()=>[...records].sort((a,b)=>a.artist.localeCompare(b.artist,'nl')||String(yr(a)).localeCompare(String(yr(b))));
 const codeOf=()=>{const m={};sorted().forEach((r,i)=>m[r.id]=letters(Math.floor(i/9))+(i%9+1));return m};
 const shown=()=>{const q=filt.q.toLowerCase();return sorted().filter(r=>(!filt.genre||r.genre===filt.genre)&&(!filt.fmt||r.format===filt.fmt)&&(!q||(r.artist+' '+r.title).toLowerCase().includes(q)))};
@@ -310,7 +310,7 @@ function renderList(){
 }
 function render(){renderList();renderNow()}
 
-/* ---------- kiezen ---------- */
+/* ---------- picking ---------- */
 const REL={rock:['pop','blues','punk','folk, world, & country','electronic'],pop:['rock','funk / soul','electronic','hip hop','latin'],jazz:['funk / soul','blues','latin','reggae'],'funk / soul':['jazz','pop','hip hop','electronic','blues','reggae'],electronic:['pop','hip hop','funk / soul','rock'],blues:['rock','jazz','funk / soul','folk, world, & country'],'folk, world, & country':['rock','blues','pop'],'hip hop':['funk / soul','electronic','pop','reggae'],reggae:['funk / soul','latin','hip hop'],latin:['jazz','funk / soul','pop'],classical:['stage & screen'],'stage & screen':['pop','classical']};
 const related=(a,b)=>{a=(a||'').toLowerCase();b=(b||'').toLowerCase();return !!a&&!!b&&((REL[a]||[]).includes(b)||(REL[b]||[]).includes(a))};
 function vibeOf(r,prev){
@@ -346,7 +346,7 @@ function play(id){
   pick=id;ls.set(uk('hist'),hist);saveSt();render();
 }
 
-/* ---------- instellingen ---------- */
+/* ---------- settings ---------- */
 function setup(){
   const a=acct||{user:'',token:''};
   openDlg(`<h4>Koppel je Discogs</h4>
@@ -364,7 +364,7 @@ function setup(){
   };
 }
 
-/* ---------- algemeen ---------- */
+/* ---------- general ---------- */
 function openDlg(h){$('dlg').innerHTML=h;$('ov').classList.add('open');const f=$('dlg').querySelector('input,button');if(f)f.focus()}
 function closeDlg(){$('ov').classList.remove('open')}
 function toast(m){$('toast').textContent=m;$('toast').classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.remove('show'),4000)}

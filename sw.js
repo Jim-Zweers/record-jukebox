@@ -1,4 +1,4 @@
-// Verhoog VERSION bij elke nieuwe upload, dan pakken de telefoons de nieuwe versie op.
+// Bump VERSION with every new upload so phones pick up the new version.
 const VERSION = 'pjb-1';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const IMG = 'pjb-img';
@@ -23,7 +23,7 @@ self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.hostname === 'api.discogs.com') return;
 
-  // Hoesfoto's: eerst uit de cache, zodat ze ook offline zichtbaar zijn.
+  // Cover art: cache first, so it is also visible offline.
   if (req.destination === 'image' && url.hostname.endsWith('discogs.com')) {
     e.respondWith(caches.open(IMG).then(async c => {
       const hit = await c.match(req);
@@ -44,7 +44,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // De app zelf: eerst het netwerk (voor updates), anders de cache.
+  // The app itself: network first (for updates), otherwise the cache.
   if (url.origin === location.origin) {
     e.respondWith(fetch(req).then(res => {
       if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
