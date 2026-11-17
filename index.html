@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Platenjukebox</title>
+<meta name="theme-color" content="#24060d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jukebox">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shrikhand&family=DM+Sans:wght@400;500;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday, playful but tidy: everyone's own record collection, straight from Discogs
+   IDEA a 1950s jukebox: chrome-edged arched cabinet, typed title strips with selection codes, a carousel that spins to a record
+   PICTURE the cabinet: turntable with spinning vinyl + now-playing strip, and a reel of sleeves that spins and stops on a pick
+   COLOUR wine cabinet #3b0a16, cherry #e0283f, chrome greys, mint #4cc9b0 accent, cream title strips #f7f1e3 with red ink
+   TYPE Shrikhand for the marquee, DM Sans for text, Courier Prime for typed strips
+   LAYOUT laptop: cabinet full width, turntable left + strip right, reel below; phone: stacked turntable, strip, reel, button */
+:root{color-scheme:dark;--bg:#24060d;--cab:#3b0a16;--cab2:#52101f;--ink:#fbeee6;--mute:#d9b7b9;--red:#e0283f;--mint:#4cc9b0;--cream:#f7f1e3;--strip:#b3132b}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{margin:0}
+html{background:#24060d}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 "DM Sans",system-ui,sans-serif;overflow-x:clip;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit}
+.band{padding-block:clamp(20px,3vw,44px);padding-left:max(4vw,16px);padding-right:max(4vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.marq{font-family:Shrikhand,Georgia,serif;font-weight:400;font-size:clamp(34px,5vw,52px);line-height:1.05;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance;color:var(--cream)}
+.sub{margin:0 0 22px;color:var(--mute)}
+.gear{flex:none;width:44px;height:44px;border-radius:22px;border:2px solid #7d5a5f;background:transparent;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.gear svg{width:22px;height:22px}
+.cab{position:relative;background:radial-gradient(120% 80% at 50% 0,var(--cab2),var(--cab) 60%);border-radius:min(46vw,420px) min(46vw,420px) 28px 28px/220px 220px 28px 28px;padding:clamp(48px,7vw,90px) clamp(16px,3vw,40px) 28px;box-shadow:inset 0 0 0 6px #8e9097,inset 0 0 0 9px #2a050c,inset 0 0 0 12px #c9cacf}
+.cab::before{content:"";position:absolute;left:12%;right:12%;top:18px;height:14px;border-radius:7px;background:repeating-linear-gradient(90deg,var(--red) 0 18px,#ff8a3d 18px 36px,var(--mint) 36px 54px);opacity:.85}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:clamp(16px,3vw,40px);align-items:center}
+.tt{position:relative;aspect-ratio:1;max-width:340px;width:100%;justify-self:center;background:#1a0408;border-radius:22px;box-shadow:inset 0 0 0 3px #6f7077}
+.tt svg{position:absolute;inset:0;width:100%;height:100%}
+#disc{transform-origin:50% 50%;transform-box:view-box}
+.tt.on #disc{animation:spin 1.8s linear infinite}
+#arm{transform-origin:272px 52px;transform-box:view-box;transition:transform .9s ease}
+.tt.on #arm{transform:rotate(26deg)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.now{background:var(--cream);color:#2a0a10;border-radius:10px;padding:16px 18px 18px;box-shadow:0 0 0 4px #c9cacf,0 0 0 7px #2a050c;font-family:"Courier Prime",monospace}
+.now .lab{display:flex;justify-content:space-between;gap:10px;color:var(--strip);font-weight:700;border-bottom:2px solid var(--strip);padding-bottom:6px;margin-bottom:10px}
+.now h2{font:700 clamp(22px,3vw,30px)/1.15 "DM Sans",sans-serif;margin:0;text-wrap:balance}
+.now p{margin:4px 0 0;font-size:17px}
+.now .meta{color:#7a3a42;font-size:14px;margin-top:8px}
+.nowbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.reelbox{position:relative;margin-top:26px;border-radius:14px;background:#1a0408;box-shadow:inset 0 0 0 3px #6f7077;overflow:hidden;height:168px}
+.reelbox::before,.reelbox::after{content:"";position:absolute;top:0;bottom:0;width:18%;z-index:2;pointer-events:none}
+.reelbox::before{left:0;background:linear-gradient(90deg,#1a0408,transparent)}
+.reelbox::after{right:0;background:linear-gradient(-90deg,#1a0408,transparent)}
+.ptr{position:absolute;left:50%;top:0;bottom:0;width:132px;margin-left:-66px;border:3px solid var(--mint);border-radius:12px;z-index:3;pointer-events:none;box-shadow:0 0 18px #4cc9b066}
+.track{position:absolute;left:0;top:18px;display:flex;gap:12px;will-change:transform}
+.slv{flex:0 0 120px;height:120px;border-radius:6px;overflow:hidden;position:relative;color:#fff;box-shadow:0 4px 0 #0008}
+.slv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;z-index:1}
+.gen{position:absolute;inset:0;padding:9px;display:flex;flex-direction:column;justify-content:flex-end;font-size:13px;line-height:1.15;font-weight:700}
+.gen b{font:400 26px/1 Shrikhand,serif;position:absolute;top:8px;left:9px;opacity:.9}
+.ctrl{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 18px;margin-top:22px}
+.big{min-height:60px;padding:0 34px;border:0;border-radius:30px;background:var(--red);color:#fff;font:400 24px/1 Shrikhand,serif;cursor:pointer;box-shadow:0 5px 0 #7b0d1c,inset 0 2px 0 #ff8796}
+.big:active{transform:translateY(3px);box-shadow:0 2px 0 #7b0d1c}
+.big:disabled{opacity:.5;cursor:default}
+.pool{color:var(--mute);font-size:15px}
+.chk{display:inline-flex;align-items:center;gap:8px;min-height:44px;cursor:pointer;color:var(--mute);font-size:15px}
+.chk input{width:20px;height:20px;accent-color:var(--mint)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:22px;border:2px solid #c9cacf;background:transparent;color:var(--ink);cursor:pointer;font-weight:500;text-decoration:none;font-family:"DM Sans",sans-serif}
+.btn.dark{border-color:#2a0a10;color:#2a0a10}
+.btn.mint{background:var(--mint);border-color:var(--mint);color:#08251f;font-weight:700}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.55;cursor:default}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,.chk:focus-within{outline:3px solid var(--mint);outline-offset:2px}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:18px 0}
+.tools input[type=search],.tools select{min-height:44px;border-radius:22px;border:2px solid #7d5a5f;background:#33080f;color:var(--ink);padding:0 16px;font-size:16px}
+.tools input[type=search]{flex:1 1 220px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:38px;padding:0 14px;border-radius:19px;border:2px solid #7d5a5f;background:transparent;color:var(--mute);cursor:pointer}
+.chip.on{background:var(--cream);border-color:var(--cream);color:var(--strip);font-weight:700}
+h3{font:400 clamp(26px,3vw,32px)/1.1 Shrikhand,serif;margin:0;color:var(--cream)}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px}
+.status{color:var(--mute);font-size:14px;margin:6px 0 0}
+.status.err{color:#ffb3bd}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,290px),1fr));gap:10px}
+.st{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;background:var(--cream);color:#2a0a10;border-radius:6px;padding:8px 10px;font-family:"Courier Prime",monospace;border-top:3px solid var(--strip);border-bottom:3px solid var(--strip);cursor:pointer;text-align:left;width:100%;font-size:inherit}
+.st.hit{box-shadow:0 0 0 3px var(--mint)}
+.code{font:700 17px/1 "Courier Prime",monospace;color:#fff;background:var(--strip);border-radius:4px;padding:8px 6px;min-width:44px;text-align:center;white-space:nowrap}
+.st .tx{display:grid;min-width:0}
+.st .t{font-weight:700;font-size:15px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st .a{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st .m{font-size:13px;color:#7a3a42;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{padding:28px;border:2px dashed #7d5a5f;border-radius:12px;text-align:center;color:var(--mute);grid-column:1/-1}
+.empty .btn{margin-top:12px}
+.note{color:var(--mute);font-size:14px;margin-top:14px}
+.note a{color:var(--cream)}
+.ov{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.ov.open{display:flex}
+.dlg{background:var(--cream);color:#2a0a10;border-radius:14px;padding:22px;width:min(520px,100%);max-height:calc(100% - 20px);overflow:auto}
+.dlg h4{font:400 26px/1.1 Shrikhand,serif;margin:0 0 12px;color:var(--strip)}
+.dlg p{margin:0 0 12px}
+.dlg a{color:var(--strip);font-weight:700}
+.dlg label{display:grid;gap:4px;font-size:14px;font-weight:700;margin-top:12px}
+.dlg input{min-height:44px;border:2px solid #b9a98d;border-radius:8px;padding:8px 10px;font-size:16px;background:#fff;color:#2a0a10}
+.row{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;margin-top:18px}
+.row .left{margin-right:auto}
+.hint{font-size:14px;color:#6b4a4e;margin:6px 0 0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(140px);background:#111;color:#fff;border-radius:24px;padding:12px 18px;transition:transform .3s;z-index:30;max-width:calc(100% - 32px)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+@media(max-width:700px){.stage{grid-template-columns:minmax(0,1fr)}.tt{max-width:260px}.cab{border-radius:160px 160px 22px 22px/120px 120px 22px 22px}}
+@media(prefers-reduced-motion:reduce){.tt.on #disc{animation:none}#arm,.toast{transition:none}}
+</style>
+</head>
+<body>
+<section class="band"><div class="wrap">
+  <div class="top">
+    <div><h1 class="marq">Platenjukebox</h1><p class="sub" id="sub">Druk op de knop en de jukebox kiest wat er op de draaitafel gaat.</p></div>
+    <button class="gear" id="cfg" aria-label="Instellingen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
+  </div>
+  <div class="cab">
+    <div class="stage">
+      <div class="tt" id="tt"><svg viewBox="0 0 340 340" id="ttsvg" aria-hidden="true"></svg></div>
+      <div class="now" id="now" aria-live="polite"></div>
+    </div>
+    <div class="reelbox" aria-hidden="true"><div class="ptr"></div><div class="track" id="track"></div></div>
+    <div class="ctrl">
+      <button class="big" id="spin" disabled>Kies een plaat</button>
+      <span class="pool" id="pool"></span>
+      <label class="chk"><input type="checkbox" id="vibe"> Blijf in de sfeer</label>
+    </div>
+  </div>
+</div></section>
+<section class="band" style="padding-top:8px"><div class="wrap">
+  <div class="head"><div><h3 id="cnt">Collectie</h3><p class="status" id="status" aria-live="polite"></p></div>
+    <div class="chips"><button class="btn mint" id="sync">Vernieuwen</button><a class="btn" href="https://www.discogs.com/search/" target="_blank" rel="noopener">Plaat toevoegen op Discogs</a></div>
+  </div>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Zoek artiest of titel" aria-label="Zoeken">
+    <select id="genre" aria-label="Genre"></select>
+    <div class="chips" id="fmts"></div>
+  </div>
+  <div class="grid" id="list"></div>
+  <p class="note">Je collectie komt rechtstreeks van Discogs: nieuwe platen zet je daar, en met Vernieuwen staan ze ook hier. Wat je draait onthoudt dit apparaat.</p>
+</div></section>
+<div class="ov" id="ov"><div class="dlg" role="dialog" aria-modal="true" id="dlg"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+{
+const API='https://api.discogs.com';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hue=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))%360;return h};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const today=()=>new Date().toISOString().slice(0,10);
+const letters=n=>n<26?String.fromCharCode(65+n):String.fromCharCode(64+Math.floor(n/26))+String.fromCharCode(65+n%26);
+const ls={get(k,d){try{const v=localStorage.getItem('pjb:'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('pjb:'+k,JSON.stringify(v))}catch(e){}}};
+
+let acct=ls.get('acct',null),records=[],hist={},pick=null,reel=[],synced=null,origs=ls.get('orig',{});
+let filt={q:'',genre:'',fmt:''},spinning=false,syncing=false,enriching=false;
+const uk=k=>k+':'+(acct?acct.user.toLowerCase():'');
+const yr=r=>origs[r.mid]||r.year||'';
+const metaOf=r=>[yr(r),r.format,r.genre].filter(Boolean).map(esc).join(' · ')+(origs[r.mid]&&r.year&&r.year!==origs[r.mid]?` · persing ${esc(r.year)}`:'');
+const daysAgo=d=>d?Math.max(0,Math.round((Date.now()-new Date(d))/864e5)):null;
+const saveSt=()=>ls.set(uk('st'),{pick,reel});
+
+/* ---------- Discogs ---------- */
+async function api(path,tries=0){
+  const sep=path.includes('?')?'&':'?';
+  const url=API+path+(acct.token?sep+'token='+encodeURIComponent(acct.token):'');
+  let res;
+  try{res=await fetch(url)}catch(e){
+    // Discogs stuurt bij te veel verzoeken (429) geen CORS-header mee; dat ziet eruit als een netwerkfout.
+    if(navigator.onLine!==false&&tries<3){await sleep(5000*(tries+1));return api(path,tries+1)}
+    throw {code:'net'};
+  }
+  if(res.status===429&&tries<3){await sleep(5000*(tries+1));return api(path,tries+1)}
+  if(!res.ok)throw {code:res.status};
+  return res.json();
+}
+const img=u=>u&&!/spacer\.gif/.test(u)?u:'';
+function fmtOf(fs){
+  const f=(fs||[])[0];if(!f)return '';
+  const d=(f.descriptions||[]).join(' '),n=f.name||'';
+  if(n==='Vinyl'){if(+f.qty>=2&&/LP/.test(d))return 'Dubbel-LP';if(/7"/.test(d))return '7"';if(/10"/.test(d))return '10"';if(/LP/.test(d))return 'LP';if(/12"/.test(d))return '12"';if(/EP/.test(d))return 'EP';return 'Vinyl'}
+  if(n==='Cassette')return 'Cass';
+  return n;
+}
+function mapRel(x){
+  const b=x.basic_information||{},as=b.artists||[];
+  const artist=as.map((a,i)=>(a.anv||a.name||'').replace(/\s\(\d+\)$/,'')+(i<as.length-1?(a.join&&a.join!==','?' '+a.join+' ':', '):'')).join('').trim()||'Onbekend';
+  return {id:String(x.instance_id||x.id),rid:b.id||x.id,mid:b.master_id||0,artist,title:b.title||'',year:b.year||'',format:fmtOf(b.formats),genre:(b.genres||[])[0]||'',style:(b.styles||[])[0]||'',thumb:img(b.thumb),cover:img(b.cover_image)};
+}
+function errMsg(e){
+  const c=e&&e.code;
+  if(c===401)return 'Je token klopt niet. Controleer hem bij Instellingen.';
+  if(c===403)return 'Deze collectie is privé. Vul je persoonlijke token in bij Instellingen.';
+  if(c===404)return `Discogs kent de gebruiker “${acct.user}” niet. Controleer de naam bij Instellingen.`;
+  if(c==='net')return 'Discogs is nu niet bereikbaar.'+(records.length?' Je ziet de laatst opgehaalde collectie.':'');
+  return 'Ophalen bij Discogs lukte niet ('+(c||'onbekend')+').';
+}
+async function sync(){
+  if(!acct||syncing)return;
+  const me=acct;
+  syncing=true;$('sync').disabled=true;status('Collectie ophalen bij Discogs…');if(!records.length)render();
+  try{
+    let page=1,pages=1;const out=[];
+    do{
+      const j=await api(`/users/${encodeURIComponent(acct.user)}/collection/folders/0/releases?per_page=100&page=${page}&sort=artist`);
+      pages=(j.pagination&&j.pagination.pages)||1;
+      out.push(...(j.releases||[]).map(mapRel));
+      if(pages>1)status(`Collectie ophalen bij Discogs… ${Math.min(page,pages)} van ${pages}`);
+      page++;
+    }while(page<=pages&&acct===me);
+    if(acct!==me)return;
+    records=out;synced=Date.now();
+    ls.set(uk('col'),records);ls.set(uk('synced'),synced);
+    if(pick&&!records.some(r=>r.id===pick)){pick=null;saveSt()}
+    status();render();if(!spinning)renderReel();
+    enrich();
+  }catch(e){if(acct===me){status(errMsg(e),true);render()}}
+  finally{syncing=false;$('sync').disabled=false}
+}
+// Haalt per album het jaar van de eerste uitgave op (één keer, daarna onthouden).
+async function enrich(){
+  if(enriching||!acct)return;enriching=true;const me=acct;
+  const todo=[...new Set(records.filter(r=>r.mid&&!(r.mid in origs)).map(r=>r.mid))];
+  let n=0;
+  for(const m of todo){
+    if(acct!==me)break;
+    try{const j=await api('/masters/'+m);origs[m]=j.year||0}catch(e){if(e&&e.code===404)origs[m]=0;else break}
+    ls.set('orig',origs);
+    if(++n%8===0&&!spinning)renderList();
+    await sleep(acct.token?1200:2700);
+  }
+  enriching=false;if(!spinning){renderList();renderNow()}
+}
+function status(msg,err){
+  if(msg){$('status').textContent=msg;$('status').classList.toggle('err',!!err);return}
+  $('status').classList.remove('err');
+  $('status').textContent=synced?'Bijgewerkt '+new Date(synced).toLocaleString('nl-NL',{weekday:'short',hour:'2-digit',minute:'2-digit'}):'';
+}
+
+/* ---------- weergave ---------- */
+const sorted=()=>[...records].sort((a,b)=>a.artist.localeCompare(b.artist,'nl')||String(yr(a)).localeCompare(String(yr(b))));
+const codeOf=()=>{const m={};sorted().forEach((r,i)=>m[r.id]=letters(Math.floor(i/9))+(i%9+1));return m};
+const shown=()=>{const q=filt.q.toLowerCase();return sorted().filter(r=>(!filt.genre||r.genre===filt.genre)&&(!filt.fmt||r.format===filt.fmt)&&(!q||(r.artist+' '+r.title).toLowerCase().includes(q)))};
+
+function sleeve(r){
+  const h=hue(r.artist+r.title),ini=r.artist.split(/\s+/).filter(w=>/^\w/.test(w)).slice(0,2).map(w=>w[0]).join('');
+  return `<div class="slv" style="background:radial-gradient(circle at 72% 30%,hsl(${(h+50)%360} 80% 62%) 0 20%,transparent 21%),repeating-linear-gradient(${h%180}deg,hsl(${h} 62% 34%) 0 14px,hsl(${h} 62% 30%) 14px 28px)"><div class="gen"><b>${esc(ini)}</b>${esc(r.title)}</div>${r.thumb||r.cover?`<img src="${esc(r.thumb||r.cover)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</div>`;
+}
+function drawTT(r){
+  const h=r?hue(r.artist+r.title):350;
+  const grooves=Array.from({length:14},(_,i)=>`<circle cx="170" cy="170" r="${58+i*6.5}" fill="none" stroke="#ffffff${i%3?'10':'1c'}" stroke-width="1"/>`).join('');
+  const base=`<circle cx="170" cy="170" r="48" fill="hsl(${h} 70% 48%)"/><circle cx="170" cy="170" r="34" fill="none" stroke="#fff6" stroke-width="1.5"/><text x="170" y="160" text-anchor="middle" font-family="DM Sans" font-weight="700" font-size="11" fill="#fff">${esc((r?r.artist:'Kies een plaat').slice(0,18))}</text>`;
+  const label=base+(r&&r.cover?`<clipPath id="lc"><circle cx="170" cy="170" r="48"/></clipPath><image href="${esc(r.cover)}" x="122" y="122" width="96" height="96" clip-path="url(#lc)" preserveAspectRatio="xMidYMid slice"/>`:'');
+  $('ttsvg').innerHTML=`<defs><radialGradient id="pl" cx=".35" cy=".3"><stop offset="0" stop-color="#5a5c63"/><stop offset="1" stop-color="#26272b"/></radialGradient></defs>
+  <rect x="14" y="14" width="312" height="312" rx="16" fill="#2b0a10"/>
+  <circle cx="170" cy="172" r="148" fill="#00000055"/><circle cx="170" cy="170" r="148" fill="url(#pl)"/>
+  <g id="disc"><circle cx="170" cy="170" r="142" fill="#0d0d0f"/>${grooves}<path d="M60 110 A130 130 0 0 1 130 48" stroke="#ffffff22" stroke-width="10" fill="none" stroke-linecap="round"/>${label}<circle cx="170" cy="170" r="4" fill="#ddd"/></g>
+  <circle cx="272" cy="52" r="16" fill="#c9cacf"/><circle cx="272" cy="52" r="7" fill="#6f7077"/>
+  <g id="arm"><path d="M272 52 L282 200 L250 262" stroke="#d9dade" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="236" y="256" width="26" height="16" rx="3" fill="#e0283f" transform="rotate(30 249 264)"/></g>`;
+}
+function renderNow(){
+  const r=records.find(x=>x.id===pick),codes=codeOf();
+  drawTT(r);$('tt').classList.toggle('on',!!r&&!spinning);
+  if(r){
+    $('now').innerHTML=`<div class="lab"><span>Nu op de draaitafel</span><span>${codes[r.id]}</span></div><h2>${esc(r.title)}</h2><p>${esc(r.artist)}</p>
+    <div class="meta">${metaOf(r)}</div>
+    <div class="nowbtns"><button class="btn dark" id="again">Andere kiezen</button><button class="btn dark" id="clr">Plaat eraf</button><a class="btn dark" href="https://www.discogs.com/release/${encodeURIComponent(r.rid)}" target="_blank" rel="noopener">Op Discogs</a></div>`;
+    $('again').onclick=spin;$('clr').onclick=()=>{pick=null;saveSt();renderNow();renderList()};
+  }else if(!acct){
+    $('now').innerHTML=`<div class="lab"><span>Welkom</span><span>—</span></div><h2>Koppel je Discogs</h2><p>Vul je Discogs-naam in en de jukebox haalt je collectie op.</p><div class="nowbtns"><button class="btn dark" data-setup>Discogs koppelen</button></div>`;
+  }else if(!records.length){
+    $('now').innerHTML=`<div class="lab"><span>${syncing?'Even geduld':'Lege jukebox'}</span><span>—</span></div><h2>${syncing?'Collectie ophalen':'Nog geen platen'}</h2><p>${syncing?'De jukebox haalt je platen op bij Discogs.':'Zet platen in je Discogs-collectie en tik daarna op Vernieuwen.'}</p>`;
+  }else{
+    $('now').innerHTML=`<div class="lab"><span>Stilte in de zaal</span><span>—</span></div><h2>Nog niets gekozen</h2><p>Gebruik de knop hieronder, of tik op een titelstrook in je collectie.</p>`;
+  }
+}
+function idlePool(){
+  const saved=(reel||[]).map(id=>records.find(r=>r.id===id));
+  if(pick&&saved.length===12&&saved.every(Boolean)&&saved[6].id===pick)return saved;
+  const list=shown();if(!list.length)return [];
+  const i=Math.max(0,list.findIndex(r=>r.id===pick)),n=list.length,pool=[];
+  for(let k=-6;k<=5;k++)pool.push(list[((i+k)%n+n)%n]);
+  return pool;
+}
+function renderReel(seq){
+  $('track').innerHTML=(seq||idlePool()).map(sleeve).join('');
+  if(!seq){const box=$('track').parentElement.clientWidth;$('track').style.transition='none';$('track').style.transform=`translateX(${box/2-60-6*132}px)`}
+}
+function renderList(){
+  const codes=codeOf(),list=shown();
+  const genres=[...new Set(records.map(r=>r.genre).filter(Boolean))].sort();
+  $('genre').innerHTML=`<option value="">Alle genres</option>`+genres.map(g=>`<option${g===filt.genre?' selected':''}>${esc(g)}</option>`).join('');
+  const fmts=[...new Set(records.map(r=>r.format).filter(Boolean))].sort();
+  $('fmts').innerHTML=['',...fmts].map(f=>`<button class="chip${f===filt.fmt?' on':''}" data-f="${esc(f)}">${f?esc(f):'Alle formaten'}</button>`).join('');
+  const n=records.length;
+  $('cnt').textContent=n?`Collectie · ${n} ${n===1?'plaat':'platen'}`:'Collectie';
+  $('list').innerHTML=list.length?list.map(r=>{const h=hist[r.id];return `<button class="st${r.id===pick?' hit':''}" data-play="${esc(r.id)}" aria-label="Zet ${esc(r.title)} op"><span class="code">${codes[r.id]}</span>
+    <span class="tx"><span class="t">${esc(r.title)}</span><span class="a">${esc(r.artist)}</span><span class="m">${metaOf(r)}${h&&h.last?` · ${daysAgo(h.last)===0?'vandaag':daysAgo(h.last)+' d geleden'}`:''}</span></span></button>`}).join('')
+    :`<div class="empty">${!acct?'Koppel eerst je Discogs-account.<br><button class="btn mint" data-setup>Discogs koppelen</button>':syncing?'Collectie ophalen…':n?'Geen platen gevonden met deze filters.':'Nog geen platen gevonden in je Discogs-collectie.'}</div>`;
+  const cur=records.find(r=>r.id===pick);
+  $('pool').textContent=list.length?`Kiest uit ${list.length} ${list.length===1?'plaat':'platen'}${$('vibe').checked&&cur?` · in de sfeer van ${cur.style||cur.genre||cur.artist}${yr(cur)?` (${yr(cur)})`:''}`:''}`:'';
+  $('spin').disabled=!list.length||spinning;
+  $('sync').hidden=!acct;
+  $('sub').textContent=acct?`De collectie van ${acct.user} op Discogs. Druk op de knop en de jukebox kiest wat er op de draaitafel gaat.`:'Druk op de knop en de jukebox kiest wat er op de draaitafel gaat.';
+}
+function render(){renderList();renderNow()}
+
+/* ---------- kiezen ---------- */
+const REL={rock:['pop','blues','punk','folk, world, & country','electronic'],pop:['rock','funk / soul','electronic','hip hop','latin'],jazz:['funk / soul','blues','latin','reggae'],'funk / soul':['jazz','pop','hip hop','electronic','blues','reggae'],electronic:['pop','hip hop','funk / soul','rock'],blues:['rock','jazz','funk / soul','folk, world, & country'],'folk, world, & country':['rock','blues','pop'],'hip hop':['funk / soul','electronic','pop','reggae'],reggae:['funk / soul','latin','hip hop'],latin:['jazz','funk / soul','pop'],classical:['stage & screen'],'stage & screen':['pop','classical']};
+const related=(a,b)=>{a=(a||'').toLowerCase();b=(b||'').toLowerCase();return !!a&&!!b&&((REL[a]||[]).includes(b)||(REL[b]||[]).includes(a))};
+function vibeOf(r,prev){
+  let m=r.genre&&r.genre===prev.genre?6:related(r.genre,prev.genre)?2.5:1;
+  if(r.style&&r.style===prev.style)m*=2;
+  if(yr(r)&&yr(prev)){const d=Math.abs(yr(r)-yr(prev));m*=d<=5?2:d<=12?1.4:1}
+  if(r.artist===prev.artist)m*=1.5;
+  return m;
+}
+function weighted(list,prev){
+  if(!($('vibe').checked&&prev))return list[Math.floor(Math.random()*list.length)];
+  const w=list.map(r=>vibeOf(r,prev)),t=w.reduce((a,b)=>a+b,0);
+  let x=Math.random()*t;for(let i=0;i<list.length;i++){x-=w[i];if(x<=0)return list[i]}return list[list.length-1];
+}
+function spin(){
+  const list=shown();if(!list.length||spinning)return;
+  spinning=true;$('spin').disabled=true;
+  const prev=records.find(r=>r.id===pick);
+  const choice=weighted(list.length>1?list.filter(r=>r.id!==pick):list,prev);
+  const rnd=()=>list[Math.floor(Math.random()*list.length)];
+  const seq=idlePool().concat(Array.from({length:24},rnd)),at=seq.length;seq.push(choice,...Array.from({length:5},rnd));
+  reel=seq.slice(at-6,at+6).map(r=>r.id);
+  pick=null;renderNow();renderReel(seq);
+  const tr=$('track'),box=tr.parentElement.clientWidth,end=box/2-60-at*132;
+  tr.style.transition='none';tr.style.transform=`translateX(${box/2-60-6*132}px)`;
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{tr.style.transition=reduce?'none':'transform 3.4s cubic-bezier(.1,.65,.12,1)';tr.style.transform=`translateX(${end}px)`}));
+  setTimeout(()=>{spinning=false;play(choice.id)},reduce?50:3500);
+}
+function play(id){
+  if(!records.some(x=>x.id===id))return;
+  const h=hist[id]||{plays:0};hist[id]={plays:(h.plays||0)+1,last:today()};
+  pick=id;ls.set(uk('hist'),hist);saveSt();render();
+}
+
+/* ---------- instellingen ---------- */
+function setup(){
+  const a=acct||{user:'',token:''};
+  openDlg(`<h4>Koppel je Discogs</h4>
+  <p>De jukebox haalt je collectie rechtstreeks bij Discogs op. Alles wat je hier invult blijft op dit apparaat.</p>
+  <form id="s"><label>Discogs-gebruikersnaam<input id="s-user" required autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(a.user)}"></label>
+  <label>Persoonlijke token<input id="s-tok" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(a.token)}"></label>
+  <p class="hint">Nodig voor de hoesfoto's en als je collectie privé is. Maak hem aan bij <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener">Discogs → Instellingen → Developers</a> met “Generate new token” en plak hem hier.</p>
+  <div class="row">${acct?'<button type="button" class="btn dark left" id="s-off">Ontkoppelen</button><button type="button" class="btn dark" id="s-x">Annuleren</button>':''}<button class="btn mint">Opslaan</button></div></form>`);
+  if($('s-x'))$('s-x').onclick=closeDlg;
+  if($('s-off'))$('s-off').onclick=()=>{acct=null;ls.set('acct',null);load();closeDlg()};
+  $('s').onsubmit=e=>{e.preventDefault();
+    const user=$('s-user').value.trim().replace(/^.*discogs\.com\/(?:[a-z]{2}\/)?user\//i,'').replace(/[/?#].*$/,''),token=$('s-tok').value.trim();
+    if(!user)return;
+    acct={user,token};ls.set('acct',acct);closeDlg();load(true);
+  };
+}
+
+/* ---------- algemeen ---------- */
+function openDlg(h){$('dlg').innerHTML=h;$('ov').classList.add('open');const f=$('dlg').querySelector('input,button');if(f)f.focus()}
+function closeDlg(){$('ov').classList.remove('open')}
+function toast(m){$('toast').textContent=m;$('toast').classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').classList.remove('show'),4000)}
+function load(force){
+  records=acct?ls.get(uk('col'),[]):[];hist=acct?ls.get(uk('hist'),{}):{};
+  const st=acct?ls.get(uk('st'),{}):{};pick=st.pick||null;reel=st.reel||[];
+  synced=acct?ls.get(uk('synced'),null):null;
+  status();render();renderReel();
+  if(acct&&(force||!synced||Date.now()-synced>10*60e3))sync();else if(acct)enrich();
+}
+
+try{$('vibe').checked=!!ls.get('vibe',false)}catch(e){}
+$('vibe').onchange=()=>{ls.set('vibe',$('vibe').checked);renderList()};
+$('spin').onclick=spin;$('sync').onclick=()=>sync();$('cfg').onclick=setup;
+$('q').oninput=e=>{filt.q=e.target.value;renderList();if(!spinning)renderReel()};
+$('genre').onchange=e=>{filt.genre=e.target.value;renderList();if(!spinning)renderReel()};
+$('fmts').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;filt.fmt=b.dataset.f;renderList();if(!spinning)renderReel()};
+$('list').onclick=e=>{const p=e.target.closest('[data-play]');if(p&&!spinning)play(p.dataset.play)};
+document.addEventListener('click',e=>{if(e.target.closest('[data-setup]'))setup()});
+$('ov').onclick=e=>{if(e.target===$('ov')&&acct)closeDlg()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&acct)closeDlg()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&acct&&synced&&Date.now()-synced>30*60e3)sync()});
+addEventListener('online',()=>{if(acct)sync()});
+new ResizeObserver(()=>{if(!spinning)renderReel()}).observe($('track').parentElement);
+
+load();
+if(!acct)setup();
+if('serviceWorker' in navigator&&location.protocol!=='file:')addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
