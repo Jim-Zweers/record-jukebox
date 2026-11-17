@@ -1,4 +1,4 @@
-# Platenjukebox
+# Record Jukebox
 
 A web app you add to your phone's home screen. It fetches your record collection straight from Discogs. The app itself is in Dutch.
 
